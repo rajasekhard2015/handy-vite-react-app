@@ -7,17 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
-
-interface Task {
-  id: number;
-  name: string;
-  startDate: Date;
-  endDate: Date;
-  progress: number;
-  color: string;
-  duration?: string;
-  notes?: string;
-}
+import { Task } from '@/contexts/GanttContext';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -33,8 +23,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
     endDate: '',
     progress: 0,
     color: '#3b82f6',
-    duration: '1 day',
-    notes: ''
+    notes: '',
+    priority: 'medium',
+    status: 'not-started',
+    resources: '',
+    dependencies: ''
   });
 
   useEffect(() => {
@@ -45,8 +38,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
         endDate: format(task.endDate, 'yyyy-MM-dd'),
         progress: task.progress,
         color: task.color,
-        duration: task.duration || '1 day',
-        notes: task.notes || ''
+        notes: task.notes || '',
+        priority: task.priority || 'medium',
+        status: task.status || 'not-started',
+        resources: task.resources?.join(', ') || '',
+        dependencies: task.dependencies?.join(', ') || ''
       });
     } else {
       setFormData({
@@ -55,8 +51,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
         endDate: format(new Date(), 'yyyy-MM-dd'),
         progress: 0,
         color: '#3b82f6',
-        duration: '1 day',
-        notes: ''
+        notes: '',
+        priority: 'medium',
+        status: 'not-started',
+        resources: '',
+        dependencies: ''
       });
     }
   }, [task, isOpen]);
@@ -68,8 +67,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
       endDate: new Date(formData.endDate),
       progress: formData.progress,
       color: formData.color,
-      duration: formData.duration,
-      notes: formData.notes
+      notes: formData.notes,
+      priority: formData.priority as Task['priority'],
+      status: formData.status as Task['status'],
+      resources: formData.resources.split(',').map(r => r.trim()).filter(r => r),
+      dependencies: formData.dependencies.split(',').map(d => d.trim()).filter(d => d)
     };
     onSave(taskData);
   };
@@ -148,22 +150,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="duration">Duration working days</Label>
-                <Select value={formData.duration} onValueChange={(value) => setFormData({ ...formData, duration: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1 day">1 day</SelectItem>
-                    <SelectItem value="2 days">2 days</SelectItem>
-                    <SelectItem value="3 days">3 days</SelectItem>
-                    <SelectItem value="1 week">1 week</SelectItem>
-                    <SelectItem value="2 weeks">2 weeks</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="progress">Progress %</Label>
                 <Input 
@@ -174,6 +161,36 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
                   value={formData.progress}
                   onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
                 />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="priority">Priority</Label>
+                <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not-started">Not Started</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="on-hold">On Hold</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             
@@ -201,14 +218,26 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
           </TabsContent>
           
           <TabsContent value="dependency" className="space-y-4 mt-4">
-            <div className="text-center text-muted-foreground py-8">
-              <p>Dependency settings coming soon...</p>
+            <div className="space-y-2">
+              <Label htmlFor="dependencies">Dependencies (Task IDs, comma-separated)</Label>
+              <Input 
+                id="dependencies"
+                value={formData.dependencies}
+                onChange={(e) => setFormData({ ...formData, dependencies: e.target.value })}
+                placeholder="task-1, task-2, task-3"
+              />
             </div>
           </TabsContent>
           
           <TabsContent value="resources" className="space-y-4 mt-4">
-            <div className="text-center text-muted-foreground py-8">
-              <p>Resource allocation coming soon...</p>
+            <div className="space-y-2">
+              <Label htmlFor="resources">Resources (comma-separated)</Label>
+              <Input 
+                id="resources"
+                value={formData.resources}
+                onChange={(e) => setFormData({ ...formData, resources: e.target.value })}
+                placeholder="John Doe, Jane Smith, Development Team"
+              />
             </div>
           </TabsContent>
           
