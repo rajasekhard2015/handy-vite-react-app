@@ -15,6 +15,16 @@ interface DraggableTaskRowProps {
   dayWidth: number;
   onEditTask: (task: Task) => void;
   isTableVisible: boolean;
+  columnWidths: {
+    taskName: number;
+    startDate: number;
+    endDate: number;
+    duration: number;
+    resources: number;
+    dependency: number;
+    actions: number;
+  };
+  tableWidth: number;
 }
 
 const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
@@ -24,7 +34,9 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
   timelineEnd,
   dayWidth,
   onEditTask,
-  isTableVisible
+  isTableVisible,
+  columnWidths,
+  tableWidth
 }) => {
   const { state, dispatch } = useGantt();
   const [isDraggingTimeline, setIsDraggingTimeline] = useState(false);
@@ -181,8 +193,9 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
         {/* Task Table Columns */}
         <div 
           className={`flex border-r border-border bg-card transition-all duration-300 ease-in-out ${
-            isTableVisible ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden'
+            isTableVisible ? 'opacity-100' : 'w-0 opacity-0 overflow-hidden'
           }`}
+          style={{ width: isTableVisible ? tableWidth : 0 }}
         >
           <div className="w-6 border-r border-border h-14 flex items-center justify-center shrink-0">
             <div
@@ -195,9 +208,12 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
           </div>
           
           <div 
-            className="w-64 border-r border-border px-3 py-2 flex items-center cursor-pointer hover:bg-accent/50 shrink-0"
+            className="border-r border-border px-3 py-2 flex items-center cursor-pointer hover:bg-accent/50 shrink-0"
             onClick={handleTaskSelect}
-            style={{ paddingLeft: `${level * 16 + 12}px` }}
+            style={{ 
+              width: columnWidths.taskName,
+              paddingLeft: `${level * 16 + 12}px` 
+            }}
           >
             {isParent && (
               <Button
@@ -230,25 +246,37 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
             </div>
           </div>
           
-          <div className="w-28 border-r border-border px-3 py-2 flex items-center shrink-0">
+          <div 
+            className="border-r border-border px-3 py-2 flex items-center shrink-0"
+            style={{ width: columnWidths.startDate }}
+          >
             <span className="text-xs text-muted-foreground">
               {format(task.startDate, 'MMM dd, yyyy')}
             </span>
           </div>
           
-          <div className="w-28 border-r border-border px-3 py-2 flex items-center shrink-0">
+          <div 
+            className="border-r border-border px-3 py-2 flex items-center shrink-0"
+            style={{ width: columnWidths.endDate }}
+          >
             <span className="text-xs text-muted-foreground">
               {format(task.endDate, 'MMM dd, yyyy')}
             </span>
           </div>
           
-          <div className="w-20 border-r border-border px-3 py-2 flex items-center shrink-0">
+          <div 
+            className="border-r border-border px-3 py-2 flex items-center shrink-0"
+            style={{ width: columnWidths.duration }}
+          >
             <span className="text-xs text-muted-foreground font-medium">
               {calculateTaskDuration(task.startDate, task.endDate)}d
             </span>
           </div>
           
-          <div className="w-32 border-r border-border px-3 py-2 flex items-center shrink-0">
+          <div 
+            className="border-r border-border px-3 py-2 flex items-center shrink-0"
+            style={{ width: columnWidths.resources }}
+          >
             <div className="flex flex-wrap gap-1 max-w-full">
               {task.resources && task.resources.length > 0 ? (
                 task.resources.slice(0, 2).map((resource, index) => (
@@ -267,7 +295,10 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
             </div>
           </div>
           
-          <div className="w-32 border-r border-border px-3 py-2 flex items-center shrink-0">
+          <div 
+            className="border-r border-border px-3 py-2 flex items-center shrink-0"
+            style={{ width: columnWidths.dependency }}
+          >
             <div className="flex flex-wrap gap-1 max-w-full">
               {task.dependencies && task.dependencies.length > 0 ? (
                 task.dependencies.slice(0, 2).map((dep, index) => (
@@ -286,7 +317,10 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
             </div>
           </div>
           
-          <div className="w-16 px-2 py-2 flex items-center justify-center shrink-0">
+          <div 
+            className="px-2 py-2 flex items-center justify-center shrink-0"
+            style={{ width: columnWidths.actions }}
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -367,6 +401,8 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
           dayWidth={dayWidth}
           onEditTask={onEditTask}
           isTableVisible={isTableVisible}
+          columnWidths={columnWidths}
+          tableWidth={tableWidth}
         />
       ))}
     </>

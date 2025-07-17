@@ -40,7 +40,11 @@ import {
   Grid,
   List,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  GripVertical
 } from 'lucide-react';
 import { format, addDays, startOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -56,6 +60,27 @@ const ProductionGanttChart = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [isTableVisible, setIsTableVisible] = useState(true);
+  
+  // Column widths state
+  const [columnWidths, setColumnWidths] = useState({
+    taskName: 264,
+    startDate: 112,
+    endDate: 112,
+    duration: 80,
+    resources: 128,
+    dependency: 128,
+    actions: 64
+  });
+  
+  // Table-chart divider state
+  const [tableWidth, setTableWidth] = useState(750);
+  const [isDraggingDivider, setIsDraggingDivider] = useState(false);
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Task | null;
+    direction: 'asc' | 'desc';
+  }>({ key: null, direction: 'asc' });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -99,15 +124,33 @@ const ProductionGanttChart = () => {
     };
   }, [state.viewMode]);
 
-  // Filter tasks
+  // Filter and sort tasks
   const filteredTasks = useMemo(() => {
-    return state.tasks.filter(task => {
+    let filtered = state.tasks.filter(task => {
       const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
       const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [state.tasks, searchTerm, filterStatus, filterPriority]);
+
+    // Apply sorting
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        const aValue = a[sortConfig.key!];
+        const bValue = b[sortConfig.key!];
+        
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [state.tasks, searchTerm, filterStatus, filterPriority, sortConfig]);
 
   const handleAddTask = () => {
     setSelectedTask(null);
@@ -180,6 +223,55 @@ const ProductionGanttChart = () => {
 
   const toggleTableVisibility = () => {
     setIsTableVisible(!isTableVisible);
+  };
+
+  // Column sorting
+  const handleSort = (key: keyof Task) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Column resize handlers
+  const handleColumnResize = (columnKey: string, newWidth: number) => {
+    setColumnWidths(prev => ({
+      ...prev,
+      [columnKey]: Math.max(60, newWidth) // Minimum width of 60px
+    }));
+  };
+
+  // Table-chart divider handlers
+  const handleDividerMouseDown = (e: React.MouseEvent) => {
+    setIsDraggingDivider(true);
+    const startX = e.clientX;
+    const startWidth = tableWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const newWidth = Math.max(300, Math.min(1200, startWidth + deltaX));
+      setTableWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingDivider(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Render sort icon
+  const renderSortIcon = (columnKey: keyof Task) => {
+    if (sortConfig.key !== columnKey) {
+      return <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-3 h-3 ml-1 text-primary" /> : 
+      <ChevronDown className="w-3 h-3 ml-1 text-primary" />;
   };
 
   const renderDateHeaders = () => {
@@ -411,34 +503,203 @@ const ProductionGanttChart = () => {
           <div className="border-b border-border flex bg-muted/50">
             <div 
               className={`flex border-r border-border bg-card transition-all duration-300 ease-in-out ${
-                isTableVisible ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden'
+                isTableVisible ? 'opacity-100' : 'w-0 opacity-0 overflow-hidden'
               }`}
+              style={{ width: isTableVisible ? tableWidth : 0 }}
             >
               <div className="w-6 border-r border-border h-12 flex items-center justify-center text-xs font-medium shrink-0">
                 #
               </div>
-              <div className="w-64 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
-                Task Name
+              
+              {/* Task Name Column */}
+              <div 
+                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                style={{ width: columnWidths.taskName }}
+                onClick={() => handleSort('name')}
+              >
+                <span>Task Name</span>
+                {renderSortIcon('name')}
+                <div 
+                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startWidth = columnWidths.taskName;
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newWidth = startWidth + (e.clientX - startX);
+                      handleColumnResize('taskName', newWidth);
+                    };
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
               </div>
-              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
-                Start Date
+              
+              {/* Start Date Column */}
+              <div 
+                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                style={{ width: columnWidths.startDate }}
+                onClick={() => handleSort('startDate')}
+              >
+                <span>Start Date</span>
+                {renderSortIcon('startDate')}
+                <div 
+                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startWidth = columnWidths.startDate;
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newWidth = startWidth + (e.clientX - startX);
+                      handleColumnResize('startDate', newWidth);
+                    };
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
               </div>
-              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
-                End Date
+              
+              {/* End Date Column */}
+              <div 
+                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                style={{ width: columnWidths.endDate }}
+                onClick={() => handleSort('endDate')}
+              >
+                <span>End Date</span>
+                {renderSortIcon('endDate')}
+                <div 
+                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startWidth = columnWidths.endDate;
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newWidth = startWidth + (e.clientX - startX);
+                      handleColumnResize('endDate', newWidth);
+                    };
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
               </div>
-              <div className="w-20 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
-                Duration
+              
+              {/* Duration Column */}
+              <div 
+                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                style={{ width: columnWidths.duration }}
+                onClick={() => handleSort('startDate')} // Sort by duration calculation
+              >
+                <span>Duration</span>
+                <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
+                <div 
+                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startWidth = columnWidths.duration;
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newWidth = startWidth + (e.clientX - startX);
+                      handleColumnResize('duration', newWidth);
+                    };
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
               </div>
-              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
-                Resources
+              
+              {/* Resources Column */}
+              <div 
+                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                style={{ width: columnWidths.resources }}
+                onClick={() => handleSort('resources' as keyof Task)}
+              >
+                <span>Resources</span>
+                <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
+                <div 
+                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startWidth = columnWidths.resources;
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newWidth = startWidth + (e.clientX - startX);
+                      handleColumnResize('resources', newWidth);
+                    };
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
               </div>
-              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
-                Dependency
+              
+              {/* Dependency Column */}
+              <div 
+                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                style={{ width: columnWidths.dependency }}
+                onClick={() => handleSort('dependencies' as keyof Task)}
+              >
+                <span>Dependency</span>
+                <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
+                <div 
+                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startWidth = columnWidths.dependency;
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newWidth = startWidth + (e.clientX - startX);
+                      handleColumnResize('dependency', newWidth);
+                    };
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
               </div>
-              <div className="w-16 h-12 flex items-center justify-center text-xs font-medium shrink-0">
+              
+              {/* Actions Column */}
+              <div 
+                className="h-12 flex items-center justify-center text-xs font-medium shrink-0"
+                style={{ width: columnWidths.actions }}
+              >
                 Actions
               </div>
             </div>
+            
+            {/* Resizable Divider */}
+            {isTableVisible && (
+              <div 
+                className={`w-2 bg-border hover:bg-primary/20 cursor-col-resize flex items-center justify-center transition-colors ${
+                  isDraggingDivider ? 'bg-primary/30' : ''
+                }`}
+                onMouseDown={handleDividerMouseDown}
+              >
+                <GripVertical className="w-3 h-3 text-muted-foreground" />
+              </div>
+            )}
+            
             <div className="flex-1 bg-background">
               {renderDateHeaders()}
             </div>
@@ -465,6 +726,8 @@ const ProductionGanttChart = () => {
                     dayWidth={dayWidth}
                     onEditTask={handleEditTask}
                     isTableVisible={isTableVisible}
+                    columnWidths={columnWidths}
+                    tableWidth={tableWidth}
                   />
                 ))}
               </SortableContext>
