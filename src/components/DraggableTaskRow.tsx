@@ -14,6 +14,7 @@ interface DraggableTaskRowProps {
   timelineEnd: Date;
   dayWidth: number;
   onEditTask: (task: Task) => void;
+  isTableVisible: boolean;
 }
 
 const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
@@ -22,7 +23,8 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
   timelineStart,
   timelineEnd,
   dayWidth,
-  onEditTask
+  onEditTask,
+  isTableVisible
 }) => {
   const { state, dispatch } = useGantt();
   const [isDraggingTimeline, setIsDraggingTimeline] = useState(false);
@@ -177,8 +179,12 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
         className={`border-b border-border flex group ${isSelected ? 'bg-accent/20' : ''} ${isDragging ? 'z-50' : ''}`}
       >
         {/* Task Table Columns */}
-        <div className="flex border-r border-border bg-card">
-          <div className="w-6 border-r border-border h-14 flex items-center justify-center">
+        <div 
+          className={`flex border-r border-border bg-card transition-all duration-300 ease-in-out ${
+            isTableVisible ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden'
+          }`}
+        >
+          <div className="w-6 border-r border-border h-14 flex items-center justify-center shrink-0">
             <div
               className="cursor-grab active:cursor-grabbing hover:bg-muted/50 rounded p-1"
               {...attributes}
@@ -189,7 +195,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
           </div>
           
           <div 
-            className="w-64 border-r border-border px-3 py-2 flex items-center cursor-pointer hover:bg-accent/50"
+            className="w-64 border-r border-border px-3 py-2 flex items-center cursor-pointer hover:bg-accent/50 shrink-0"
             onClick={handleTaskSelect}
             style={{ paddingLeft: `${level * 16 + 12}px` }}
           >
@@ -224,25 +230,25 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
             </div>
           </div>
           
-          <div className="w-28 border-r border-border px-3 py-2 flex items-center">
+          <div className="w-28 border-r border-border px-3 py-2 flex items-center shrink-0">
             <span className="text-xs text-muted-foreground">
               {format(task.startDate, 'MMM dd, yyyy')}
             </span>
           </div>
           
-          <div className="w-28 border-r border-border px-3 py-2 flex items-center">
+          <div className="w-28 border-r border-border px-3 py-2 flex items-center shrink-0">
             <span className="text-xs text-muted-foreground">
               {format(task.endDate, 'MMM dd, yyyy')}
             </span>
           </div>
           
-          <div className="w-20 border-r border-border px-3 py-2 flex items-center">
+          <div className="w-20 border-r border-border px-3 py-2 flex items-center shrink-0">
             <span className="text-xs text-muted-foreground font-medium">
               {calculateTaskDuration(task.startDate, task.endDate)}d
             </span>
           </div>
           
-          <div className="w-32 border-r border-border px-3 py-2 flex items-center">
+          <div className="w-32 border-r border-border px-3 py-2 flex items-center shrink-0">
             <div className="flex flex-wrap gap-1 max-w-full">
               {task.resources && task.resources.length > 0 ? (
                 task.resources.slice(0, 2).map((resource, index) => (
@@ -261,7 +267,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
             </div>
           </div>
           
-          <div className="w-32 border-r border-border px-3 py-2 flex items-center">
+          <div className="w-32 border-r border-border px-3 py-2 flex items-center shrink-0">
             <div className="flex flex-wrap gap-1 max-w-full">
               {task.dependencies && task.dependencies.length > 0 ? (
                 task.dependencies.slice(0, 2).map((dep, index) => (
@@ -280,7 +286,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
             </div>
           </div>
           
-          <div className="w-16 px-2 py-2 flex items-center justify-center">
+          <div className="w-16 px-2 py-2 flex items-center justify-center shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -360,6 +366,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
           timelineEnd={timelineEnd}
           dayWidth={dayWidth}
           onEditTask={onEditTask}
+          isTableVisible={isTableVisible}
         />
       ))}
     </>

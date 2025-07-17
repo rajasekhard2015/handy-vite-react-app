@@ -38,7 +38,9 @@ import {
   Filter,
   Settings,
   Grid,
-  List
+  List,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { format, addDays, startOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -53,6 +55,7 @@ const ProductionGanttChart = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [isTableVisible, setIsTableVisible] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -173,6 +176,10 @@ const ProductionGanttChart = () => {
 
   const handleViewModeChange = (mode: 'day' | 'week' | 'month') => {
     dispatch({ type: 'SET_VIEW_MODE', payload: mode });
+  };
+
+  const toggleTableVisibility = () => {
+    setIsTableVisible(!isTableVisible);
   };
 
   const renderDateHeaders = () => {
@@ -351,6 +358,22 @@ const ProductionGanttChart = () => {
             
             <Separator orientation="vertical" className="h-6" />
             
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={toggleTableVisibility}
+              className="bg-background"
+            >
+              {isTableVisible ? (
+                <PanelLeftClose className="w-4 h-4 mr-1" />
+              ) : (
+                <PanelLeftOpen className="w-4 h-4 mr-1" />
+              )}
+              {isTableVisible ? 'Hide Table' : 'Show Table'}
+            </Button>
+            
+            <Separator orientation="vertical" className="h-6" />
+            
             <Button variant="outline" size="sm" onClick={handleZoomIn}>
               <ZoomIn className="w-4 h-4 mr-1" />
               Zoom In
@@ -386,29 +409,33 @@ const ProductionGanttChart = () => {
         <div className="w-full">
           {/* Column Headers */}
           <div className="border-b border-border flex bg-muted/50">
-            <div className="flex border-r border-border bg-card">
-              <div className="w-6 border-r border-border h-12 flex items-center justify-center text-xs font-medium">
+            <div 
+              className={`flex border-r border-border bg-card transition-all duration-300 ease-in-out ${
+                isTableVisible ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden'
+              }`}
+            >
+              <div className="w-6 border-r border-border h-12 flex items-center justify-center text-xs font-medium shrink-0">
                 #
               </div>
-              <div className="w-64 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+              <div className="w-64 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
                 Task Name
               </div>
-              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
                 Start Date
               </div>
-              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
                 End Date
               </div>
-              <div className="w-20 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+              <div className="w-20 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
                 Duration
               </div>
-              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
                 Resources
               </div>
-              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0">
                 Dependency
               </div>
-              <div className="w-16 h-12 flex items-center justify-center text-xs font-medium">
+              <div className="w-16 h-12 flex items-center justify-center text-xs font-medium shrink-0">
                 Actions
               </div>
             </div>
@@ -437,6 +464,7 @@ const ProductionGanttChart = () => {
                     timelineEnd={timelineEnd}
                     dayWidth={dayWidth}
                     onEditTask={handleEditTask}
+                    isTableVisible={isTableVisible}
                   />
                 ))}
               </SortableContext>
