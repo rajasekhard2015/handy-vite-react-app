@@ -386,11 +386,30 @@ const ProductionGanttChart = () => {
         <div className="w-full">
           {/* Column Headers */}
           <div className="border-b border-border flex bg-muted/50">
-            <div className="w-80 border-r border-border bg-card">
-              <div className="h-12 flex items-center px-4 font-medium text-sm">
-                <div className="w-10 mr-4">ID</div>
-                <div className="flex-1">Task Name</div>
-                <div className="w-16 text-center">Actions</div>
+            <div className="flex border-r border-border bg-card">
+              <div className="w-6 border-r border-border h-12 flex items-center justify-center text-xs font-medium">
+                #
+              </div>
+              <div className="w-64 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+                Task Name
+              </div>
+              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+                Start Date
+              </div>
+              <div className="w-28 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+                End Date
+              </div>
+              <div className="w-20 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+                Duration
+              </div>
+              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+                Resources
+              </div>
+              <div className="w-32 border-r border-border h-12 flex items-center px-3 text-xs font-medium">
+                Dependency
+              </div>
+              <div className="w-16 h-12 flex items-center justify-center text-xs font-medium">
+                Actions
               </div>
             </div>
             <div className="flex-1 bg-background">

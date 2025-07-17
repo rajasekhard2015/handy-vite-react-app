@@ -176,17 +176,23 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
         style={style}
         className={`border-b border-border flex group ${isSelected ? 'bg-accent/20' : ''} ${isDragging ? 'z-50' : ''}`}
       >
-        {/* Task List Column */}
-        <div className="w-80 border-r border-border bg-card">
+        {/* Task Table Columns */}
+        <div className="flex border-r border-border bg-card">
+          <div className="w-6 border-r border-border h-14 flex items-center justify-center">
+            <div
+              className="cursor-grab active:cursor-grabbing hover:bg-muted/50 rounded p-1"
+              {...attributes}
+              {...listeners}
+            >
+              <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+            </div>
+          </div>
+          
           <div 
-            className="flex items-center h-14 px-2 hover:bg-accent/50 cursor-pointer"
-            style={{ paddingLeft: `${level * 24 + 8}px` }}
+            className="w-64 border-r border-border px-3 py-2 flex items-center cursor-pointer hover:bg-accent/50"
             onClick={handleTaskSelect}
-            {...attributes}
-            {...listeners}
+            style={{ paddingLeft: `${level * 16 + 12}px` }}
           >
-            <span className="w-10 text-xs text-muted-foreground font-mono">{task.id}</span>
-            
             {isParent && (
               <Button
                 variant="ghost"
@@ -203,38 +209,82 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
                 }
               </Button>
             )}
-            
-            <div className="flex-1 min-w-0 mr-2">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium truncate">{task.name}</span>
-                {task.priority && (
-                  <Badge variant={getPriorityBadgeColor(task.priority)} className="text-xs h-4">
-                    {task.priority}
-                  </Badge>
-                )}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate mb-1" title={task.name}>
+                {task.name}
               </div>
-              
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  <span>{format(task.startDate, 'MMM dd')} - {format(task.endDate, 'MMM dd')}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  <span>{calculateTaskDuration(task.startDate, task.endDate)}d</span>
-                </div>
-                {task.status && (
-                  <Badge variant={getStatusBadgeColor(task.status)} className="text-xs h-4">
-                    {task.status}
-                  </Badge>
-                )}
+              <div className="flex items-center gap-1">
+                <Badge variant={getStatusBadgeColor(task.status)} className="text-xs h-4">
+                  {task.status}
+                </Badge>
+                <Badge variant={getPriorityBadgeColor(task.priority)} className="text-xs h-4">
+                  {task.priority}
+                </Badge>
               </div>
             </div>
-            
+          </div>
+          
+          <div className="w-28 border-r border-border px-3 py-2 flex items-center">
+            <span className="text-xs text-muted-foreground">
+              {format(task.startDate, 'MMM dd, yyyy')}
+            </span>
+          </div>
+          
+          <div className="w-28 border-r border-border px-3 py-2 flex items-center">
+            <span className="text-xs text-muted-foreground">
+              {format(task.endDate, 'MMM dd, yyyy')}
+            </span>
+          </div>
+          
+          <div className="w-20 border-r border-border px-3 py-2 flex items-center">
+            <span className="text-xs text-muted-foreground font-medium">
+              {calculateTaskDuration(task.startDate, task.endDate)}d
+            </span>
+          </div>
+          
+          <div className="w-32 border-r border-border px-3 py-2 flex items-center">
+            <div className="flex flex-wrap gap-1 max-w-full">
+              {task.resources && task.resources.length > 0 ? (
+                task.resources.slice(0, 2).map((resource, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs px-1 py-0" title={resource}>
+                    {resource.length > 8 ? `${resource.slice(0, 8)}...` : resource}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">-</span>
+              )}
+              {task.resources && task.resources.length > 2 && (
+                <Badge variant="outline" className="text-xs px-1 py-0">
+                  +{task.resources.length - 2}
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          <div className="w-32 border-r border-border px-3 py-2 flex items-center">
+            <div className="flex flex-wrap gap-1 max-w-full">
+              {task.dependencies && task.dependencies.length > 0 ? (
+                task.dependencies.slice(0, 2).map((dep, index) => (
+                  <Badge key={index} variant="outline" className="text-xs px-1 py-0" title={dep}>
+                    {dep.length > 8 ? `${dep.slice(0, 8)}...` : dep}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">-</span>
+              )}
+              {task.dependencies && task.dependencies.length > 2 && (
+                <Badge variant="outline" className="text-xs px-1 py-0">
+                  +{task.dependencies.length - 2}
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          <div className="w-16 px-2 py-2 flex items-center justify-center">
             <Button
               variant="ghost"
               size="sm"
-              className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 shrink-0"
+              className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
                 onEditTask(task);
