@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { 
   Plus, 
   Edit, 
@@ -496,226 +497,293 @@ const ProductionGanttChart = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-full">
-          {/* Column Headers */}
-          <div className="border-b border-border flex bg-muted/50">
-            <div 
-              className={`flex border-r border-border bg-card transition-all duration-300 ease-in-out ${
-                isTableVisible ? 'opacity-100' : 'w-0 opacity-0 overflow-hidden'
-              }`}
-              style={{ width: isTableVisible ? tableWidth : 0 }}
-            >
-              <div className="w-6 border-r border-border h-12 flex items-center justify-center text-xs font-medium shrink-0">
-                #
+      {/* Main Content with Resizable Panels */}
+      <div className="flex-1 overflow-hidden">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          {/* Table Panel */}
+          <ResizablePanel 
+            defaultSize={35} 
+            minSize={20} 
+            maxSize={60}
+            className={`${!isTableVisible ? 'hidden' : ''}`}
+          >
+            <div className="h-full flex flex-col">
+              {/* Table Column Headers */}
+              <div className="border-b border-border bg-muted/50">
+                <div className="flex bg-card">
+                  <div className="w-6 border-r border-border h-12 flex items-center justify-center text-xs font-medium shrink-0">
+                    #
+                  </div>
+                  
+                  {/* Task Name Column */}
+                  <div 
+                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                    style={{ width: columnWidths.taskName }}
+                    onClick={() => handleSort('name')}
+                  >
+                    <span>Task Name</span>
+                    {renderSortIcon('name')}
+                    <div 
+                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = columnWidths.taskName;
+                        const handleMouseMove = (e: MouseEvent) => {
+                          const newWidth = startWidth + (e.clientX - startX);
+                          handleColumnResize('taskName', newWidth);
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Start Date Column */}
+                  <div 
+                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                    style={{ width: columnWidths.startDate }}
+                    onClick={() => handleSort('startDate')}
+                  >
+                    <span>Start Date</span>
+                    {renderSortIcon('startDate')}
+                    <div 
+                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = columnWidths.startDate;
+                        const handleMouseMove = (e: MouseEvent) => {
+                          const newWidth = startWidth + (e.clientX - startX);
+                          handleColumnResize('startDate', newWidth);
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    />
+                  </div>
+                  
+                  {/* End Date Column */}
+                  <div 
+                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                    style={{ width: columnWidths.endDate }}
+                    onClick={() => handleSort('endDate')}
+                  >
+                    <span>End Date</span>
+                    {renderSortIcon('endDate')}
+                    <div 
+                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = columnWidths.endDate;
+                        const handleMouseMove = (e: MouseEvent) => {
+                          const newWidth = startWidth + (e.clientX - startX);
+                          handleColumnResize('endDate', newWidth);
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Duration Column */}
+                  <div 
+                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                    style={{ width: columnWidths.duration }}
+                    onClick={() => handleSort('startDate')}
+                  >
+                    <span>Duration</span>
+                    <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
+                    <div 
+                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = columnWidths.duration;
+                        const handleMouseMove = (e: MouseEvent) => {
+                          const newWidth = startWidth + (e.clientX - startX);
+                          handleColumnResize('duration', newWidth);
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Resources Column */}
+                  <div 
+                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                    style={{ width: columnWidths.resources }}
+                    onClick={() => handleSort('resources' as keyof Task)}
+                  >
+                    <span>Resources</span>
+                    <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
+                    <div 
+                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = columnWidths.resources;
+                        const handleMouseMove = (e: MouseEvent) => {
+                          const newWidth = startWidth + (e.clientX - startX);
+                          handleColumnResize('resources', newWidth);
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Dependency Column */}
+                  <div 
+                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
+                    style={{ width: columnWidths.dependency }}
+                    onClick={() => handleSort('dependencies' as keyof Task)}
+                  >
+                    <span>Dependency</span>
+                    <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
+                    <div 
+                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = columnWidths.dependency;
+                        const handleMouseMove = (e: MouseEvent) => {
+                          const newWidth = startWidth + (e.clientX - startX);
+                          handleColumnResize('dependency', newWidth);
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Actions Column */}
+                  <div 
+                    className="h-12 flex items-center justify-center text-xs font-medium shrink-0"
+                    style={{ width: columnWidths.actions }}
+                  >
+                    Actions
+                  </div>
+                </div>
               </div>
               
-              {/* Task Name Column */}
-              <div 
-                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                style={{ width: columnWidths.taskName }}
-                onClick={() => handleSort('name')}
-              >
-                <span>Task Name</span>
-                {renderSortIcon('name')}
-                <div 
-                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const startWidth = columnWidths.taskName;
-                    const handleMouseMove = (e: MouseEvent) => {
-                      const newWidth = startWidth + (e.clientX - startX);
-                      handleColumnResize('taskName', newWidth);
-                    };
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-              </div>
-              
-              {/* Start Date Column */}
-              <div 
-                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                style={{ width: columnWidths.startDate }}
-                onClick={() => handleSort('startDate')}
-              >
-                <span>Start Date</span>
-                {renderSortIcon('startDate')}
-                <div 
-                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const startWidth = columnWidths.startDate;
-                    const handleMouseMove = (e: MouseEvent) => {
-                      const newWidth = startWidth + (e.clientX - startX);
-                      handleColumnResize('startDate', newWidth);
-                    };
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-              </div>
-              
-              {/* End Date Column */}
-              <div 
-                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                style={{ width: columnWidths.endDate }}
-                onClick={() => handleSort('endDate')}
-              >
-                <span>End Date</span>
-                {renderSortIcon('endDate')}
-                <div 
-                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const startWidth = columnWidths.endDate;
-                    const handleMouseMove = (e: MouseEvent) => {
-                      const newWidth = startWidth + (e.clientX - startX);
-                      handleColumnResize('endDate', newWidth);
-                    };
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-              </div>
-              
-              {/* Duration Column */}
-              <div 
-                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                style={{ width: columnWidths.duration }}
-                onClick={() => handleSort('startDate')} // Sort by duration calculation
-              >
-                <span>Duration</span>
-                <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
-                <div 
-                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const startWidth = columnWidths.duration;
-                    const handleMouseMove = (e: MouseEvent) => {
-                      const newWidth = startWidth + (e.clientX - startX);
-                      handleColumnResize('duration', newWidth);
-                    };
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-              </div>
-              
-              {/* Resources Column */}
-              <div 
-                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                style={{ width: columnWidths.resources }}
-                onClick={() => handleSort('resources' as keyof Task)}
-              >
-                <span>Resources</span>
-                <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
-                <div 
-                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const startWidth = columnWidths.resources;
-                    const handleMouseMove = (e: MouseEvent) => {
-                      const newWidth = startWidth + (e.clientX - startX);
-                      handleColumnResize('resources', newWidth);
-                    };
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-              </div>
-              
-              {/* Dependency Column */}
-              <div 
-                className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                style={{ width: columnWidths.dependency }}
-                onClick={() => handleSort('dependencies' as keyof Task)}
-              >
-                <span>Dependency</span>
-                <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
-                <div 
-                  className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const startWidth = columnWidths.dependency;
-                    const handleMouseMove = (e: MouseEvent) => {
-                      const newWidth = startWidth + (e.clientX - startX);
-                      handleColumnResize('dependency', newWidth);
-                    };
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-              </div>
-              
-              {/* Actions Column */}
-              <div 
-                className="h-12 flex items-center justify-center text-xs font-medium shrink-0"
-                style={{ width: columnWidths.actions }}
-              >
-                Actions
+              {/* Table Tasks List */}
+              <div className="flex-1 overflow-auto">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={filteredTasks.map(task => task.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {filteredTasks.map(task => (
+                      <div key={task.id} className="flex border-b border-border hover:bg-muted/20">
+                        <div className="w-6 border-r border-border py-2 flex items-center justify-center text-xs shrink-0">
+                          {filteredTasks.indexOf(task) + 1}
+                        </div>
+                        <div 
+                          className="border-r border-border py-2 px-3 text-sm shrink-0"
+                          style={{ width: columnWidths.taskName }}
+                        >
+                          {task.name}
+                        </div>
+                        <div 
+                          className="border-r border-border py-2 px-3 text-sm shrink-0"
+                          style={{ width: columnWidths.startDate }}
+                        >
+                          {format(task.startDate, 'MMM dd, yyyy')}
+                        </div>
+                        <div 
+                          className="border-r border-border py-2 px-3 text-sm shrink-0"
+                          style={{ width: columnWidths.endDate }}
+                        >
+                          {format(task.endDate, 'MMM dd, yyyy')}
+                        </div>
+                        <div 
+                          className="border-r border-border py-2 px-3 text-sm shrink-0"
+                          style={{ width: columnWidths.duration }}
+                        >
+                          {Math.ceil((task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24))} days
+                        </div>
+                        <div 
+                          className="border-r border-border py-2 px-3 text-sm shrink-0"
+                          style={{ width: columnWidths.resources }}
+                        >
+                          {task.resources?.join(', ') || 'Unassigned'}
+                        </div>
+                        <div 
+                          className="border-r border-border py-2 px-3 text-sm shrink-0"
+                          style={{ width: columnWidths.dependency }}
+                        >
+                          {task.dependencies?.join(', ') || 'None'}
+                        </div>
+                        <div 
+                          className="py-2 px-2 text-sm shrink-0 flex items-center gap-1"
+                          style={{ width: columnWidths.actions }}
+                        >
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditTask(task)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </div>
             </div>
-            
-            {/* Resizable Divider */}
-            {isTableVisible && (
-              <div 
-                className={`w-2 bg-border hover:bg-primary/20 cursor-col-resize flex items-center justify-center transition-colors ${
-                  isDraggingDivider ? 'bg-primary/30' : ''
-                }`}
-                onMouseDown={handleDividerMouseDown}
-              >
-                <GripVertical className="w-3 h-3 text-muted-foreground" />
-              </div>
-            )}
-            
-            <div className="flex-1 bg-background">
-              {renderDateHeaders()}
-            </div>
-          </div>
+          </ResizablePanel>
           
-          {/* Tasks List */}
-          <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={filteredTasks.map(task => task.id)}
-                strategy={verticalListSortingStrategy}
-              >
+          {/* Resizable Handle */}
+          {isTableVisible && (
+            <ResizableHandle withHandle />
+          )}
+          
+          {/* Chart Panel */}
+          <ResizablePanel 
+            defaultSize={isTableVisible ? 65 : 100} 
+            minSize={40}
+          >
+            <div className="h-full flex flex-col">
+              {/* Chart Headers */}
+              <div className="border-b border-border bg-muted/50">
+                {renderDateHeaders()}
+              </div>
+              
+              {/* Chart Timeline */}
+              <div className="flex-1 overflow-auto">
                 {filteredTasks.map(task => (
                   <DraggableTaskRow
                     key={task.id}
@@ -725,15 +793,15 @@ const ProductionGanttChart = () => {
                     timelineEnd={timelineEnd}
                     dayWidth={dayWidth}
                     onEditTask={handleEditTask}
-                    isTableVisible={isTableVisible}
+                    isTableVisible={false} // Only show chart part
                     columnWidths={columnWidths}
-                    tableWidth={tableWidth}
+                    tableWidth={0}
                   />
                 ))}
-              </SortableContext>
-            </DndContext>
-          </div>
-        </div>
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
       {/* Status Bar */}
