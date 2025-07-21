@@ -778,10 +778,10 @@ const ProductionGanttChart = () => {
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext
-                    items={filteredTasks.map(task => task.id)}
+                    items={filteredTasks.filter(task => !task.parentId).map(task => task.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {filteredTasks.map(task => (
+                     {filteredTasks.filter(task => !task.parentId).map(task => (
                       <ContextMenu key={task.id}>
                         <ContextMenuTrigger asChild>
                           <div className="flex border-b border-border hover:bg-muted/20 cursor-pointer" onContextMenu={(e) => handleContextMenu(e, task)}>
@@ -898,7 +898,7 @@ const ProductionGanttChart = () => {
               
               {/* Chart Timeline */}
               <div className="flex-1 overflow-auto">
-                {filteredTasks.map(task => (
+                {filteredTasks.filter(task => !task.parentId).map(task => (
                   <DraggableTaskRow
                     key={task.id}
                     task={task}

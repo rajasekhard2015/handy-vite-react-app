@@ -69,8 +69,51 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
     dispatch({ type: 'TOGGLE_TASK_EXPANSION', payload: task.id });
   };
 
+  const [contextMenu, setContextMenu] = useState<{x: number, y: number} | null>(null);
+
   const handleTaskSelect = () => {
     dispatch({ type: 'SELECT_TASK', payload: task.id });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+    dispatch({ type: 'SELECT_TASK', payload: task.id });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const handleAddTask = (position: 'above' | 'below' | 'subtask') => {
+    const newTask: Task = {
+      id: `task-${Date.now()}`,
+      name: 'New Task',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      progress: 0,
+      color: '#3b82f6',
+      order: 0,
+      priority: 'medium',
+      status: 'not-started'
+    };
+
+    dispatch({
+      type: 'ADD_TASK_AT_POSITION',
+      payload: { task: newTask, position, targetTaskId: task.id }
+    });
+    closeContextMenu();
+  };
+
+  const handleDeleteTask = () => {
+    dispatch({ type: 'DELETE_TASK', payload: task.id });
+    closeContextMenu();
+  };
+
+  const handleTaskInfo = () => {
+    onEditTask(task);
+    closeContextMenu();
   };
 
   // Timeline drag handlers
@@ -189,6 +232,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
         ref={setNodeRef}
         style={style}
         className={`border-b border-border flex group ${isSelected ? 'bg-accent/20' : ''} ${isDragging ? 'z-50' : ''}`}
+        onContextMenu={handleContextMenu}
       >
         {/* Task Table Columns */}
         <div 
@@ -210,6 +254,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
           <div 
             className="border-r border-border px-3 py-2 flex items-center cursor-pointer hover:bg-accent/50 shrink-0"
             onClick={handleTaskSelect}
+            onContextMenu={handleContextMenu}
             style={{ 
               width: columnWidths.taskName,
               paddingLeft: `${level * 16 + 12}px` 
@@ -405,6 +450,70 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
           tableWidth={tableWidth}
         />
       ))}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={closeContextMenu}
+          />
+          <div 
+            className="fixed z-50 bg-popover border border-border rounded-md shadow-md min-w-48"
+            style={{ 
+              left: contextMenu.x, 
+              top: contextMenu.y,
+              transform: 'translate(0, 0)'
+            }}
+          >
+            <div className="p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start h-8 px-2 text-sm"
+                onClick={handleTaskInfo}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Task Information
+              </Button>
+              <div className="my-1 border-t border-border" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start h-8 px-2 text-sm"
+                onClick={() => handleAddTask('above')}
+              >
+                Add Task Above
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start h-8 px-2 text-sm"
+                onClick={() => handleAddTask('below')}
+              >
+                Add Task Below
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start h-8 px-2 text-sm"
+                onClick={() => handleAddTask('subtask')}
+              >
+                Add Subtask
+              </Button>
+              <div className="my-1 border-t border-border" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start h-8 px-2 text-sm text-destructive hover:text-destructive"
+                onClick={handleDeleteTask}
+              >
+                Delete Task
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 };
