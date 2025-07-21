@@ -22,6 +22,10 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Plus, 
   Edit, 
@@ -45,7 +49,11 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  GripVertical
+  GripVertical,
+  MoreVertical,
+  Info,
+  Copy,
+  Milestone
 } from 'lucide-react';
 import { format, addDays, startOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -82,6 +90,33 @@ const ProductionGanttChart = () => {
     key: keyof Task | null;
     direction: 'asc' | 'desc';
   }>({ key: null, direction: 'asc' });
+
+  // Context menu state
+  const [contextMenuTask, setContextMenuTask] = useState<Task | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState({
+    id: true,
+    taskName: true,
+    startDate: true,
+    endDate: true,
+    duration: true,
+    progress: false,
+    dependency: true,
+    resources: true,
+    color: false
+  });
+
+  // Column filters state
+  const [columnFilters, setColumnFilters] = useState<Record<string, {
+    type: 'equal' | 'greater' | 'greaterEqual' | 'less' | 'lessEqual' | 'notEqual';
+    value: string;
+  }>>({});
+
+  // Task action state
+  const [taskActionType, setTaskActionType] = useState<'add-above' | 'add-below' | 'add-subtask' | null>(null);
+  const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -153,7 +188,7 @@ const ProductionGanttChart = () => {
     return filtered;
   }, [state.tasks, searchTerm, filterStatus, filterPriority, sortConfig]);
 
-  const handleAddTask = () => {
+  const handleAddNewTask = () => {
     setSelectedTask(null);
     setIsModalOpen(true);
   };
@@ -183,9 +218,20 @@ const ProductionGanttChart = () => {
         notes: taskData.notes,
         ...taskData
       };
-      dispatch({ type: 'ADD_TASK', payload: newTask });
+      
+      if (taskActionType && targetTaskId) {
+        const position = taskActionType.replace('add-', '') as 'above' | 'below' | 'subtask';
+        dispatch({ 
+          type: 'ADD_TASK_AT_POSITION', 
+          payload: { task: newTask, position, targetTaskId } 
+        });
+      } else {
+        dispatch({ type: 'ADD_TASK', payload: newTask });
+      }
     }
     setIsModalOpen(false);
+    setTaskActionType(null);
+    setTargetTaskId(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -265,6 +311,98 @@ const ProductionGanttChart = () => {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  // Context menu handlers
+  const handleContextMenu = (e: React.MouseEvent, task: Task) => {
+    e.preventDefault();
+    setContextMenuTask(task);
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleTaskInformation = () => {
+    if (contextMenuTask) {
+      handleEditTask(contextMenuTask);
+    }
+    setContextMenuTask(null);
+  };
+
+  const handleDeleteTask = () => {
+    if (contextMenuTask) {
+      dispatch({ type: 'DELETE_TASK', payload: contextMenuTask.id });
+    }
+    setContextMenuTask(null);
+  };
+
+  const handleAddTask = (type: 'add-above' | 'add-below' | 'add-subtask') => {
+    if (contextMenuTask) {
+      setTaskActionType(type);
+      setTargetTaskId(contextMenuTask.id);
+      setSelectedTask(null);
+      setIsModalOpen(true);
+    }
+    setContextMenuTask(null);
+  };
+
+  const handleDuplicateTask = () => {
+    if (contextMenuTask) {
+      const duplicatedTask: Task = {
+        ...contextMenuTask,
+        id: `task-${Date.now()}`,
+        name: `${contextMenuTask.name} (Copy)`,
+        order: state.tasks.length
+      };
+      dispatch({ type: 'ADD_TASK', payload: duplicatedTask });
+    }
+    setContextMenuTask(null);
+  };
+
+  // Column visibility handlers
+  const toggleColumnVisibility = (columnKey: string) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey as keyof typeof prev]
+    }));
+  };
+
+  // Column filter handlers
+  const handleColumnFilter = (columnKey: string, filterType: string, value: string) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [columnKey]: { type: filterType as any, value }
+    }));
+  };
+
+  // Auto-fit column handlers
+  const handleAutoFitColumn = (columnKey: string) => {
+    // Calculate the maximum content width for the column
+    let maxWidth = 60; // minimum width
+    
+    filteredTasks.forEach(task => {
+      const content = getColumnContent(task, columnKey);
+      const estimatedWidth = content.length * 8 + 24; // rough estimation
+      maxWidth = Math.max(maxWidth, estimatedWidth);
+    });
+    
+    handleColumnResize(columnKey, Math.min(maxWidth, 300)); // cap at 300px
+  };
+
+  const handleAutoFitAllColumns = () => {
+    Object.keys(columnWidths).forEach(columnKey => {
+      handleAutoFitColumn(columnKey);
+    });
+  };
+
+  const getColumnContent = (task: Task, columnKey: string): string => {
+    switch (columnKey) {
+      case 'taskName': return task.name;
+      case 'startDate': return format(task.startDate, 'MMM dd, yyyy');
+      case 'endDate': return format(task.endDate, 'MMM dd, yyyy');
+      case 'duration': return `${Math.ceil((task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24))} days`;
+      case 'resources': return task.resources?.join(', ') || 'Unassigned';
+      case 'dependency': return task.dependencies?.join(', ') || 'None';
+      default: return '';
+    }
+  };
+
   // Render sort icon
   const renderSortIcon = (columnKey: keyof Task) => {
     if (sortConfig.key !== columnKey) {
@@ -274,6 +412,105 @@ const ProductionGanttChart = () => {
       <ChevronUp className="w-3 h-3 ml-1 text-primary" /> : 
       <ChevronDown className="w-3 h-3 ml-1 text-primary" />;
   };
+
+  // Render column header with dropdown
+  const renderColumnHeader = (title: string, columnKey: string, sortKey?: keyof Task) => (
+    <div 
+      className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 relative group"
+      style={{ width: columnWidths[columnKey as keyof typeof columnWidths] }}
+    >
+      <div className="flex items-center justify-between w-full">
+        <div 
+          className="flex items-center cursor-pointer hover:text-primary"
+          onClick={() => sortKey && handleSort(sortKey)}
+        >
+          <span>{title}</span>
+          {sortKey && renderSortIcon(sortKey)}
+        </div>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <MoreVertical className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => handleAutoFitColumn(columnKey)}>
+              Autofit this column
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleAutoFitAllColumns}>
+              Autofit all columns
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {sortKey && (
+              <>
+                <DropdownMenuItem onClick={() => handleSort(sortKey)}>
+                  <ChevronUp className="w-4 h-4 mr-2" />
+                  Sort Ascending
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { handleSort(sortKey); setSortConfig(prev => ({ ...prev, direction: 'desc' })); }}>
+                  <ChevronDown className="w-4 h-4 mr-2" />
+                  Sort Descending
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Settings className="w-4 h-4 mr-2" />
+                Columns
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-48">
+                {Object.entries(visibleColumns).map(([key, visible]) => (
+                  <DropdownMenuCheckboxItem
+                    key={key}
+                    checked={visible}
+                    onCheckedChange={() => toggleColumnVisibility(key)}
+                  >
+                    {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Filter className="w-4 h-4 mr-2" />
+                Filter
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-48">
+                <DropdownMenuItem>Equal</DropdownMenuItem>
+                <DropdownMenuItem>Greater Than</DropdownMenuItem>
+                <DropdownMenuItem>Greater Than Or Equal</DropdownMenuItem>
+                <DropdownMenuItem>Less Than</DropdownMenuItem>
+                <DropdownMenuItem>Less Than Or Equal</DropdownMenuItem>
+                <DropdownMenuItem>Not Equal</DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      
+      {/* Column resize handle */}
+      <div 
+        className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startWidth = columnWidths[columnKey as keyof typeof columnWidths];
+          const handleMouseMove = (e: MouseEvent) => {
+            const newWidth = startWidth + (e.clientX - startX);
+            handleColumnResize(columnKey, newWidth);
+          };
+          const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+          };
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }}
+      />
+    </div>
+  );
 
   const renderDateHeaders = () => {
     const headerHeight = state.viewMode === 'day' ? 'h-16' : 'h-12';
@@ -346,7 +583,7 @@ const ProductionGanttChart = () => {
       <div className="border-b border-border bg-card p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button onClick={handleAddTask} className="bg-primary hover:bg-primary/90">
+            <Button onClick={handleAddNewTask} className="bg-primary hover:bg-primary/90">
               <Plus className="w-4 h-4 mr-2" />
               New Task
             </Button>
@@ -515,173 +752,13 @@ const ProductionGanttChart = () => {
                     #
                   </div>
                   
-                  {/* Task Name Column */}
-                  <div 
-                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                    style={{ width: columnWidths.taskName }}
-                    onClick={() => handleSort('name')}
-                  >
-                    <span>Task Name</span>
-                    {renderSortIcon('name')}
-                    <div 
-                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        const startX = e.clientX;
-                        const startWidth = columnWidths.taskName;
-                        const handleMouseMove = (e: MouseEvent) => {
-                          const newWidth = startWidth + (e.clientX - startX);
-                          handleColumnResize('taskName', newWidth);
-                        };
-                        const handleMouseUp = () => {
-                          document.removeEventListener('mousemove', handleMouseMove);
-                          document.removeEventListener('mouseup', handleMouseUp);
-                        };
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Start Date Column */}
-                  <div 
-                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                    style={{ width: columnWidths.startDate }}
-                    onClick={() => handleSort('startDate')}
-                  >
-                    <span>Start Date</span>
-                    {renderSortIcon('startDate')}
-                    <div 
-                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        const startX = e.clientX;
-                        const startWidth = columnWidths.startDate;
-                        const handleMouseMove = (e: MouseEvent) => {
-                          const newWidth = startWidth + (e.clientX - startX);
-                          handleColumnResize('startDate', newWidth);
-                        };
-                        const handleMouseUp = () => {
-                          document.removeEventListener('mousemove', handleMouseMove);
-                          document.removeEventListener('mouseup', handleMouseUp);
-                        };
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                      }}
-                    />
-                  </div>
-                  
-                  {/* End Date Column */}
-                  <div 
-                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                    style={{ width: columnWidths.endDate }}
-                    onClick={() => handleSort('endDate')}
-                  >
-                    <span>End Date</span>
-                    {renderSortIcon('endDate')}
-                    <div 
-                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        const startX = e.clientX;
-                        const startWidth = columnWidths.endDate;
-                        const handleMouseMove = (e: MouseEvent) => {
-                          const newWidth = startWidth + (e.clientX - startX);
-                          handleColumnResize('endDate', newWidth);
-                        };
-                        const handleMouseUp = () => {
-                          document.removeEventListener('mousemove', handleMouseMove);
-                          document.removeEventListener('mouseup', handleMouseUp);
-                        };
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Duration Column */}
-                  <div 
-                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                    style={{ width: columnWidths.duration }}
-                    onClick={() => handleSort('startDate')}
-                  >
-                    <span>Duration</span>
-                    <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
-                    <div 
-                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        const startX = e.clientX;
-                        const startWidth = columnWidths.duration;
-                        const handleMouseMove = (e: MouseEvent) => {
-                          const newWidth = startWidth + (e.clientX - startX);
-                          handleColumnResize('duration', newWidth);
-                        };
-                        const handleMouseUp = () => {
-                          document.removeEventListener('mousemove', handleMouseMove);
-                          document.removeEventListener('mouseup', handleMouseUp);
-                        };
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Resources Column */}
-                  <div 
-                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                    style={{ width: columnWidths.resources }}
-                    onClick={() => handleSort('resources' as keyof Task)}
-                  >
-                    <span>Resources</span>
-                    <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
-                    <div 
-                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        const startX = e.clientX;
-                        const startWidth = columnWidths.resources;
-                        const handleMouseMove = (e: MouseEvent) => {
-                          const newWidth = startWidth + (e.clientX - startX);
-                          handleColumnResize('resources', newWidth);
-                        };
-                        const handleMouseUp = () => {
-                          document.removeEventListener('mousemove', handleMouseMove);
-                          document.removeEventListener('mouseup', handleMouseUp);
-                        };
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Dependency Column */}
-                  <div 
-                    className="border-r border-border h-12 flex items-center px-3 text-xs font-medium shrink-0 cursor-pointer hover:bg-muted/50 relative group"
-                    style={{ width: columnWidths.dependency }}
-                    onClick={() => handleSort('dependencies' as keyof Task)}
-                  >
-                    <span>Dependency</span>
-                    <ChevronsUpDown className="w-3 h-3 ml-1 text-muted-foreground" />
-                    <div 
-                      className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 group-hover:bg-primary/10"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        const startX = e.clientX;
-                        const startWidth = columnWidths.dependency;
-                        const handleMouseMove = (e: MouseEvent) => {
-                          const newWidth = startWidth + (e.clientX - startX);
-                          handleColumnResize('dependency', newWidth);
-                        };
-                        const handleMouseUp = () => {
-                          document.removeEventListener('mousemove', handleMouseMove);
-                          document.removeEventListener('mouseup', handleMouseUp);
-                        };
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                      }}
-                    />
-                  </div>
+                  {/* Use new column header components */}
+                  {renderColumnHeader("Task Name", "taskName", "name")}
+                  {renderColumnHeader("Start Date", "startDate", "startDate")}
+                  {renderColumnHeader("End Date", "endDate", "endDate")}
+                  {renderColumnHeader("Duration", "duration")}
+                  {renderColumnHeader("Resources", "resources")}
+                  {renderColumnHeader("Dependency", "dependency")}
                   
                   {/* Actions Column */}
                   <div 
@@ -705,60 +782,97 @@ const ProductionGanttChart = () => {
                     strategy={verticalListSortingStrategy}
                   >
                     {filteredTasks.map(task => (
-                      <div key={task.id} className="flex border-b border-border hover:bg-muted/20">
-                        <div className="w-6 border-r border-border py-2 flex items-center justify-center text-xs shrink-0">
-                          {filteredTasks.indexOf(task) + 1}
-                        </div>
-                        <div 
-                          className="border-r border-border py-2 px-3 text-sm shrink-0"
-                          style={{ width: columnWidths.taskName }}
-                        >
-                          {task.name}
-                        </div>
-                        <div 
-                          className="border-r border-border py-2 px-3 text-sm shrink-0"
-                          style={{ width: columnWidths.startDate }}
-                        >
-                          {format(task.startDate, 'MMM dd, yyyy')}
-                        </div>
-                        <div 
-                          className="border-r border-border py-2 px-3 text-sm shrink-0"
-                          style={{ width: columnWidths.endDate }}
-                        >
-                          {format(task.endDate, 'MMM dd, yyyy')}
-                        </div>
-                        <div 
-                          className="border-r border-border py-2 px-3 text-sm shrink-0"
-                          style={{ width: columnWidths.duration }}
-                        >
-                          {Math.ceil((task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24))} days
-                        </div>
-                        <div 
-                          className="border-r border-border py-2 px-3 text-sm shrink-0"
-                          style={{ width: columnWidths.resources }}
-                        >
-                          {task.resources?.join(', ') || 'Unassigned'}
-                        </div>
-                        <div 
-                          className="border-r border-border py-2 px-3 text-sm shrink-0"
-                          style={{ width: columnWidths.dependency }}
-                        >
-                          {task.dependencies?.join(', ') || 'None'}
-                        </div>
-                        <div 
-                          className="py-2 px-2 text-sm shrink-0 flex items-center gap-1"
-                          style={{ width: columnWidths.actions }}
-                        >
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleEditTask(task)}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
+                      <ContextMenu key={task.id}>
+                        <ContextMenuTrigger asChild>
+                          <div className="flex border-b border-border hover:bg-muted/20 cursor-pointer" onContextMenu={(e) => handleContextMenu(e, task)}>
+                            <div className="w-6 border-r border-border py-2 flex items-center justify-center text-xs shrink-0">
+                              {filteredTasks.indexOf(task) + 1}
+                            </div>
+                            <div 
+                              className="border-r border-border py-2 px-3 text-sm shrink-0"
+                              style={{ width: columnWidths.taskName }}
+                            >
+                              {task.name}
+                            </div>
+                            <div 
+                              className="border-r border-border py-2 px-3 text-sm shrink-0"
+                              style={{ width: columnWidths.startDate }}
+                            >
+                              {format(task.startDate, 'MMM dd, yyyy')}
+                            </div>
+                            <div 
+                              className="border-r border-border py-2 px-3 text-sm shrink-0"
+                              style={{ width: columnWidths.endDate }}
+                            >
+                              {format(task.endDate, 'MMM dd, yyyy')}
+                            </div>
+                            <div 
+                              className="border-r border-border py-2 px-3 text-sm shrink-0"
+                              style={{ width: columnWidths.duration }}
+                            >
+                              {Math.ceil((task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24))} days
+                            </div>
+                            <div 
+                              className="border-r border-border py-2 px-3 text-sm shrink-0"
+                              style={{ width: columnWidths.resources }}
+                            >
+                              {task.resources?.join(', ') || 'Unassigned'}
+                            </div>
+                            <div 
+                              className="border-r border-border py-2 px-3 text-sm shrink-0"
+                              style={{ width: columnWidths.dependency }}
+                            >
+                              {task.dependencies?.join(', ') || 'None'}
+                            </div>
+                            <div 
+                              className="py-2 px-2 text-sm shrink-0 flex items-center gap-1"
+                              style={{ width: columnWidths.actions }}
+                            >
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleEditTask(task)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-56">
+                          <ContextMenuItem onClick={handleTaskInformation}>
+                            <Info className="w-4 h-4 mr-2" />
+                            Task Information
+                          </ContextMenuItem>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem onClick={() => handleAddTask('add-above')}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Task Above
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleAddTask('add-below')}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Task Below
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleAddTask('add-subtask')}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Subtask
+                          </ContextMenuItem>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem onClick={handleDuplicateTask}>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Duplicate Task
+                          </ContextMenuItem>
+                          <ContextMenuItem>
+                            <Milestone className="w-4 h-4 mr-2" />
+                            Convert to Milestone
+                          </ContextMenuItem>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem onClick={handleDeleteTask} className="text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Task
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
                     ))}
                   </SortableContext>
                 </DndContext>

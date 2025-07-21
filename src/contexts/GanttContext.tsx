@@ -33,6 +33,7 @@ export interface GanttState {
 type GanttAction =
   | { type: 'SET_TASKS'; payload: Task[] }
   | { type: 'ADD_TASK'; payload: Task }
+  | { type: 'ADD_TASK_AT_POSITION'; payload: { task: Task; position: 'above' | 'below' | 'subtask'; targetTaskId: string } }
   | { type: 'UPDATE_TASK'; payload: { id: string; updates: Partial<Task> } }
   | { type: 'DELETE_TASK'; payload: string }
   | { type: 'SELECT_TASK'; payload: string | null }
@@ -43,6 +44,7 @@ type GanttAction =
   | { type: 'START_DRAG'; payload: Task }
   | { type: 'END_DRAG' }
   | { type: 'REORDER_TASKS'; payload: { sourceIndex: number; destinationIndex: number } }
+  | { type: 'MOVE_TASK_TO_PARENT'; payload: { taskId: string; newParentId: string | null; newIndex: number } }
   | { type: 'START_RESIZE'; payload: { taskId: string; handle: 'start' | 'end' } }
   | { type: 'END_RESIZE' }
   | { type: 'RESIZE_TASK'; payload: { taskId: string; newStartDate?: Date; newEndDate?: Date } };
@@ -166,6 +168,12 @@ function ganttReducer(state: GanttState, action: GanttAction): GanttState {
     case 'ADD_TASK':
       return { ...state, tasks: [...state.tasks, action.payload] };
     
+    case 'ADD_TASK_AT_POSITION':
+      return {
+        ...state,
+        tasks: addTaskAtPosition(state.tasks, action.payload.task, action.payload.position, action.payload.targetTaskId)
+      };
+    
     case 'UPDATE_TASK':
       return {
         ...state,
@@ -175,7 +183,7 @@ function ganttReducer(state: GanttState, action: GanttAction): GanttState {
     case 'DELETE_TASK':
       return {
         ...state,
-        tasks: state.tasks.filter(task => task.id !== action.payload)
+        tasks: deleteTaskRecursively(state.tasks, action.payload)
       };
     
     case 'SELECT_TASK':
@@ -257,6 +265,56 @@ function findTaskById(tasks: Task[], taskId: string): Task | undefined {
     }
   }
   return undefined;
+}
+
+function addTaskAtPosition(tasks: Task[], newTask: Task, position: 'above' | 'below' | 'subtask', targetTaskId: string): Task[] {
+  const newTasks = [...tasks];
+  
+  function insertTask(taskList: Task[], level: number = 0): Task[] {
+    for (let i = 0; i < taskList.length; i++) {
+      if (taskList[i].id === targetTaskId) {
+        const targetTask = taskList[i];
+        
+        if (position === 'subtask') {
+          // Add as a child
+          const updatedTask = {
+            ...targetTask,
+            children: [...(targetTask.children || []), { ...newTask, parentId: targetTaskId }],
+            isExpanded: true
+          };
+          taskList[i] = updatedTask;
+          return taskList;
+        } else if (position === 'above') {
+          // Insert above the target task
+          taskList.splice(i, 0, newTask);
+          return taskList;
+        } else if (position === 'below') {
+          // Insert below the target task
+          taskList.splice(i + 1, 0, newTask);
+          return taskList;
+        }
+      }
+      
+      // Check children
+      if (taskList[i].children) {
+        const updatedChildren = insertTask(taskList[i].children!, level + 1);
+        taskList[i] = { ...taskList[i], children: updatedChildren };
+      }
+    }
+    return taskList;
+  }
+  
+  return insertTask(newTasks);
+}
+
+function deleteTaskRecursively(tasks: Task[], taskId: string): Task[] {
+  return tasks.filter(task => {
+    if (task.id === taskId) return false;
+    if (task.children) {
+      task.children = deleteTaskRecursively(task.children, taskId);
+    }
+    return true;
+  });
 }
 
 // Context
